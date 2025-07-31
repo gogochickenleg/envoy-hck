@@ -43,6 +43,22 @@ static_resources:
         "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
         explicit_http_config:
           http2_protocol_options: {}
+    transport_socket:
+      name: envoy.transport_sockets.tls
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+        common_tls_context:
+          # This is the certificate Envoy will present to the Go app
+          tls_certificates:
+          - certificate_chain: { filename: "./certs/client.crt" }
+            private_key: { filename: "./certs/client.key" }
+          # This is the CA Envoy will use to verify the Go app's certificate
+          validation_context:
+            trusted_ca:
+              filename: "./certs/ca.crt"
+            # Optional: Ensures the certificate presented by the server has the correct subject name.
+            # match_subject_alt_names:
+            # - exact: "localhost"
     common_lb_config:
       healthy_panic_threshold:
         value: 0
