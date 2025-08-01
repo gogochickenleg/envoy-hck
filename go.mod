@@ -1,4 +1,4 @@
-module github.com/dethi/envoy_hck
+module github.com/gogochickenleg/envoy_hck
 
 go 1.24.5
 

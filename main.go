@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/dethi/envoy_hck/protos"
+	pb "github.com/gogochickenleg/envoy_hck/protos"
 )
 
 // server is used to implement the TimeServiceServer.

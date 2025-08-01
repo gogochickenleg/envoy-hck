@@ -5,7 +5,7 @@
 
 admin:
   address:
-    socket_address: { address: 127.0.0.1, port_value: 9901 }
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
 
 static_resources:
   listeners:
@@ -18,6 +18,7 @@ static_resources:
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
           stat_prefix: ingress_http
+          codec_type: AUTO
           route_config:
             name: local_route
             virtual_hosts:
@@ -27,7 +28,6 @@ static_resources:
               - match: { prefix: "/" }
                 route:
                   cluster: go_app_cluster
-                  # Enable gRPC streaming
                   timeout: 0s
           http_filters:
           - name: envoy.filters.http.router
@@ -37,15 +37,11 @@ static_resources:
   clusters:
   - name: go_app_cluster
     type: STRICT_DNS
-    # For gRPC streaming
-    typed_extension_protocol_options:
-      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
-        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
-        explicit_http_config:
-          http2_protocol_options: {}
+    lb_policy: ROUND_ROBIN
+    http2_protocol_options: {}
     common_lb_config:
       healthy_panic_threshold:
-        value: 0
+        value: 0.0
     load_assignment:
       cluster_name: go_app_cluster
       endpoints:
@@ -53,13 +49,12 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: 127.0.0.1
+                address: 10.0.0.178
                 port_value: 50051
     health_checks:
-      - timeout: 1s
+      - timeout: 3s
         interval: 2s
         unhealthy_threshold: 3
         healthy_threshold: 1
         grpc_health_check:
           service_name: ""
-          # authority: "localhost"

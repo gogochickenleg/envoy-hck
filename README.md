@@ -144,3 +144,30 @@ These `openssl` commands will create a self-signed Certificate Authority (CA) an
     ```
 
 After running these commands, your `certs` directory should contain `ca.crt`, `server.crt`, `server.key`, `client.crt`, and `client.key`, among other files.
+
+
+## Quick Start Guide
+
+1. **Start Envoy Proxy:**
+   ```bash
+   docker run --rm -it -p 8080:8080 -p 9901:9901 \
+       -v $(pwd)/envoy.yml:/etc/envoy/envoy.yaml \
+       envoyproxy/envoy:v1.22.0
+   ```
+
+   **Note:** After running, it takes some time for Envoy to start up. You can verify it's running by checking the admin interface at http://localhost:9901/clusters - the output should contain `health_flags` when ready.
+
+2. **Start the Go gRPC Server:**
+   ```bash
+   go run main.go
+   ```
+
+3. **Toggle Health Status (Optional):**
+   ```bash
+   curl http://localhost:8081/toggle-health
+   ```
+
+4. **Test the gRPC Service:**
+   ```bash
+   grpcurl -d '{}' localhost:8080 time.TimeService/StreamTime
+   ```
