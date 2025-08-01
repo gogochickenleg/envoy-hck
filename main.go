@@ -7,16 +7,19 @@
 package main
 
 import (
-	"flag"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -59,18 +62,33 @@ var (
 )
 
 func main() {
-	// Define command-line flags for ports
-	grpcPort := flag.Int("grpc-port", 50051, "The gRPC server port")
-	httpPort := flag.Int("http-port", 8081, "The HTTP server port for health toggling")
-	flag.Parse()
+	// --- Load TLS credentials ---
+	serverCert, err := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
+	if err != nil {
+		log.Fatalf("failed to load server cert: %v", err)
+	}
+
+	caCert, err := os.ReadFile("certs/ca.crt")
+	if err != nil {
+		log.Fatalf("failed to read ca cert: %v", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientCAs:    caCertPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert, // Require clients to present a cert from our CA
+	}
+
+	creds := credentials.NewTLS(tlsConfig)
 
 	// --- gRPC Server ---
-	grpcAddr := fmt.Sprintf(":%d", *grpcPort)
-	lis, err := net.Listen("tcp", grpcAddr)
+	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.Creds(creds)) // Apply TLS credentials to the server
 
 	// Register the TimeService
 	pb.RegisterTimeServiceServer(s, &server{})
@@ -113,9 +131,8 @@ func main() {
 		fmt.Fprintf(w, "Health status is now %s\n", statusString)
 	})
 
-	httpAddr := fmt.Sprintf(":%d", *httpPort)
-	log.Printf("Health toggle server listening at %s", httpAddr)
-	if err := http.ListenAndServe(httpAddr, nil); err != nil {
+	log.Println("Health toggle server listening at :8081")
+	if err := http.ListenAndServe(":8081", nil); err != nil {
 		log.Fatalf("failed to start HTTP server: %v", err)
 	}
 }
